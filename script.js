@@ -46,116 +46,141 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     }
 
-    // 3D Purple/Blue Particle System
+    // Matrix-style Hacker Background - Purple/Blue Theme
     const canvas = document.getElementById('bg-canvas');
     if (canvas) {
         const ctx = canvas.getContext('2d');
         let width, height;
-        let particles = [];
+        let columns = [];
+        let drops = [];
 
-        // Mouse state
-        let mouse = { x: -1000, y: -1000 };
+        // Characters to use - mix of code symbols, binary, and special chars
+        const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン{}[]()<>+-*/=!@#$%^&*';
+        const charArray = chars.split('');
 
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
+
+            // Calculate number of columns
+            const fontSize = 14;
+            columns = Math.floor(width / fontSize);
+
+            // Reset drops array
+            drops = [];
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.random() * -100; // Start at random heights
+            }
         }
 
         window.addEventListener('resize', resize);
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-
         resize();
 
-        class Particle {
-            constructor() {
-                this.reset();
-            }
+        let lastTime = 0;
+        const fps = 30; // Limit FPS to reduce flashing speed
+        const interval = 1000 / fps;
 
-            reset() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.z = Math.random() * 2 + 1; // Depth factor (1 to 3)
-                this.baseSize = Math.random() * 3; // Base size
-                this.size = this.baseSize;
-                this.vx = (Math.random() - 0.5) * 0.5;
-                this.vy = (Math.random() - 0.5) * 0.5;
-                // Purple/Blue colors
-                const colors = [
-                    `rgba(191, 0, 255, ${Math.random() * 0.6 + 0.2})`, // Purple
-                    `rgba(138, 43, 226, ${Math.random() * 0.6 + 0.2})`, // BlueViolet
-                    `rgba(0, 255, 255, ${Math.random() * 0.4 + 0.1})`   // Cyan accent
-                ];
-                this.color = colors[Math.floor(Math.random() * colors.length)];
-                this.pulseSpeed = Math.random() * 0.05 + 0.01;
-                this.pulseAngle = Math.random() * Math.PI * 2;
-            }
+        function draw(currentTime) {
+            requestAnimationFrame(draw);
 
-            update() {
-                // Base movement
-                this.x += this.vx * this.z;
-                this.y += this.vy * this.z;
+            const deltaTime = currentTime - lastTime;
+            if (deltaTime < interval) return;
 
-                // Pulse effect
-                this.pulseAngle += this.pulseSpeed;
-                this.size = this.baseSize + Math.sin(this.pulseAngle) * 0.5;
+            lastTime = currentTime - (deltaTime % interval);
 
-                // Mouse Repulsion
-                const dx = this.x - mouse.x;
-                const dy = this.y - mouse.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const maxDistance = 200; // Interaction radius
+            // Darker background with lower opacity for longer trails (smoother look)
+            ctx.fillStyle = 'rgba(5, 5, 16, 0.1)';
+            ctx.fillRect(0, 0, width, height);
 
-                if (distance < maxDistance) {
-                    const forceDirectionX = dx / distance;
-                    const forceDirectionY = dy / distance;
-                    const force = (maxDistance - distance) / maxDistance;
-                    const repulsionStrength = 5 * this.z;
+            ctx.font = '14px monospace';
 
-                    this.vx += forceDirectionX * force * repulsionStrength * 0.05;
-                    this.vy += forceDirectionY * force * repulsionStrength * 0.05;
+            for (let i = 0; i < drops.length; i++) {
+                // Random character
+                const char = charArray[Math.floor(Math.random() * charArray.length)];
+
+                // Purple-focused color scheme
+                const brightness = Math.random();
+                if (brightness > 0.95) {
+                    ctx.fillStyle = '#bf00ff'; // Brightest purple
+                } else if (brightness > 0.8) {
+                    ctx.fillStyle = '#9d00d9';
+                } else if (brightness > 0.6) {
+                    ctx.fillStyle = '#7b00b3';
+                } else if (brightness > 0.4) {
+                    ctx.fillStyle = '#5a0080';
+                } else {
+                    ctx.fillStyle = '#3d0059'; // Darkest
                 }
 
-                // Friction to stabilize speed
-                this.vx *= 0.96;
-                this.vy *= 0.96;
+                // Subtle glow effect
+                if (brightness > 0.9) {
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = '#bf00ff';
+                } else {
+                    ctx.shadowBlur = 0;
+                }
 
-                // Screen wrapping
-                if (this.x < 0) this.x = width;
-                if (this.x > width) this.x = 0;
-                if (this.y < 0) this.y = height;
-                if (this.y > height) this.y = 0;
-            }
+                // Draw character
+                const x = i * 14;
+                const y = drops[i] * 14;
+                ctx.fillText(char, x, y);
 
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                const apparentSize = Math.max(0, this.size * this.z * 0.5);
-                ctx.arc(this.x, this.y, apparentSize, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+                // Reset drop to top randomly
+                if (y > height && Math.random() > 0.98) {
+                    drops[i] = 0;
+                }
 
-        function initParticles() {
-            particles = [];
-            const particleCount = 300;
-            for (let i = 0; i < particleCount; i++) {
-                particles.push(new Particle());
+                // Move drop down
+                drops[i]++;
             }
         }
 
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            particles.forEach(p => {
-                p.update();
-                p.draw();
+        // Start animation loop
+        requestAnimationFrame(draw);
+    }
+
+    // Image Viewer Functionality - Click on gallery items to view full size
+    const imageViewer = document.getElementById('imageViewer');
+    const imageViewerClose = document.getElementById('imageViewerClose');
+    const viewerImage = document.getElementById('viewerImage');
+    const galleryItems = document.querySelectorAll('.gallery-item');
+
+    if (imageViewer && imageViewerClose && viewerImage) {
+        // Add click event to each gallery item
+        galleryItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                // Only trigger if clicking directly on the gallery item or its image
+                // This prevents clicks on empty space from opening the viewer
+                if (e.target === item || e.target.parentElement === item) {
+                    const imageSrc = item.getAttribute('data-image');
+                    if (imageSrc) {
+                        viewerImage.src = imageSrc;
+                        imageViewer.classList.add('active');
+                    }
+                }
             });
-            requestAnimationFrame(animate);
-        }
+        });
 
-        initParticles();
-        animate();
+        // Close image viewer
+        imageViewerClose.addEventListener('click', () => {
+            imageViewer.classList.remove('active');
+            viewerImage.src = '';
+        });
+
+        // Close when clicking outside the image
+        imageViewer.addEventListener('click', (e) => {
+            if (e.target === imageViewer) {
+                imageViewer.classList.remove('active');
+                viewerImage.src = '';
+            }
+        });
+
+        // Close with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && imageViewer.classList.contains('active')) {
+                imageViewer.classList.remove('active');
+                viewerImage.src = '';
+            }
+        });
     }
 });
